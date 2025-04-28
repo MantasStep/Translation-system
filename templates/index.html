@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="lt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teksto Vertimas</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Teksto Vertimas</h1>
+    <form id="translate-form">
+        <label for="text">Įveskite tekstą:</label><br>
+        <textarea id="text" name="text" rows="4" cols="50" required></textarea><br><br>
+        
+        <label for="direction">Pasirinkite vertimo kryptį:</label><br>
+        <select id="direction" name="direction" required>
+            <option value="lt-en">Iš lietuvių į anglų</option>
+            <option value="en-lt">Iš anglų į lietuvių</option>
+        </select><br><br>
+        
+        <button type="submit">Versti</button>
+    </form>
+    
+    <h2>Rezultatai:</h2>
+    <div id="results">
+        <h3>Visų modelių vertimai:</h3>
+        <ul id="translations"></ul>
+        
+        <h3>Geriausias vertimas:</h3>
+        <p id="best-translation"></p>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#translate-form').on('submit', function(e) {
+                e.preventDefault();
+
+                const text = $('#text').val();
+                const direction = $('#direction').val();
+
+                // Siunčiame AJAX užklausą į serverį
+                $.ajax({
+                    url: '/translate',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ text: text, direction: direction }),
+                    success: function(response) {
+                        // Išvalome senus rezultatus
+                        $('#translations').empty();
+                        $('#best-translation').empty();
+
+                        // Rodome visų modelių vertimus
+                        $.each(response.translations, function(model, translation) {
+                            $('#translations').append(`<li><strong>${model}:</strong> ${translation}</li>`);
+                        });
+
+                        // Rodome geriausią vertimą
+                        $('#best-translation').text(response.best_translation);
+                    },
+                    error: function(error) {
+                        alert('Įvyko klaida verčiant tekstą.');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
