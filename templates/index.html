@@ -64,5 +64,47 @@
             });
         });
     </script>
+
+<h2>Įkelti .docx dokumentą vertimui:</h2>
+<form id="upload-form" enctype="multipart/form-data" method="post">
+    <input type="file" name="file" id="file" accept=".docx" required>
+    <select name="direction" id="direction">
+        <option value="lt-en">Iš lietuvių į anglų</option>
+        <option value="en-lt">Iš anglų į lietuvių</option>
+    </select>
+    <button type="submit">Versti dokumentą</button>
+</form>
+
+<script>
+    $('#upload-form').on('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        $.ajax({
+            url: '/upload',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            xhrFields: {
+                responseType: 'blob'
+            },
+            success: function(response) {
+                const url = window.URL.createObjectURL(response);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'isverstas.docx';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            },
+            error: function() {
+                alert('Klaida verčiant dokumentą.');
+            }
+        });
+    });
+</script>
+
+
 </body>
 </html>
