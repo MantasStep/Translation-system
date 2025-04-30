@@ -38,3 +38,7 @@ Thumbs.db
 
 #modeliai
 modeliai/
+
+#Failu vertimas
+uploads/
+translated/

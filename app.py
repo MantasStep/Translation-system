@@ -121,11 +121,25 @@ def translate():
         elapsed_time = time.time() - start_time
         print(f"Modelis '{model_name}' užbaigė vertimą per {elapsed_time:.2f} sekundžių.")
 
-    # Pasirenkame geriausią vertimą
-    best_translation = determine_best_translation(translations)
-    print("Vertimas baigtas. Geriausias vertimas pasirinktas.\n")
+        # Pasirenkame geriausią vertimą
+        best_translation = determine_best_translation(translations)
+        print("Vertimas baigtas. Geriausias vertimas pasirinktas.\n")
 
-    return jsonify({'translations': translations, 'best_translation': best_translation})
+        # Įrašom į DB
+        entry = TranslationMemory(
+            text=original_text,
+            translation=best_translation,
+            source_lang=source_lang,
+            target_lang=target_lang,
+            confirmed=True,
+            is_document=False,
+            file_path=None
+        )
+        db.session.add(entry)
+        db.session.commit()
+
+        return jsonify({'translations': translations, 'best_translation': best_translation})
+
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
