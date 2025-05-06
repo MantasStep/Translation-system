@@ -1,0 +1,30 @@
+{# templates/admin/admin_memory.html #}
+{% extends "base.html" %}
+{% block title %}Translation Memory{% endblock %}
+{% block content %}
+<h2>Translation Memory</h2>
+<table class="table">
+  <thead>
+    <tr>
+      <th>ID</th><th>Vartotojas</th><th>Šaltinis</th><th>Vertimas</th><th>Dokumentas</th><th>Parsisiųsti</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in records %}
+    <tr>
+      <td>{{ r.id }}</td>
+      <td>{{ r.user.username }}</td>
+      <td>{{ r.source_text or "" }}</td>
+      <td>{{ r.translated_text or "" }}</td>
+      <td>{{ "Taip" if r.is_document else "Ne" }}</td>
+      <td>
+        {% if r.is_document %}
+          <a href="{{ url_for('admin.download_memory_file', tm_id=r.id, which='original') }}">Originalas</a> |
+          <a href="{{ url_for('admin.download_memory_file', tm_id=r.id, which='translated') }}">Vertimas</a>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

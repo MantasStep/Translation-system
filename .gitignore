@@ -1,44 +1,44 @@
-# Byte-compiled / optimized / DLL files
+# === Byte‐compiled / optimized / DLL files ===
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual environment folders
+# === Virtual environments ===
 venv/
 ENV/
 env/
 .venv/
 
-# Distribution / packaging
+# === Environment files ===
+.env
+.env.*
+
+# === Distribution / packaging ===
 build/
 dist/
-.eggs/
 *.egg-info/
+.eggs/
 
-# Flask specific
+# === Flask instance & runtime artifacts ===
 instance/
 *.sqlite3
+*.db
 
-# VSCode settings
-.vscode/
+# === Uploaded & generated files ===
+uploads/
+translated/
 
-# Pytest cache
-.pytest_cache/
+# === Model caches (huggingface etc) ===
+models_cache/
 
-# Logs and debug files
+# === Logs ===
 *.log
 
-# IDE settings (PyCharm, etc.)
+# === IDE / editor ===
+.vscode/
 .idea/
 *.iml
 
-# System files
+# === OS junk ===
 .DS_Store
 Thumbs.db
-
-#modeliai
-modeliai/
-
-#Failu vertimas
-uploads/
-translated/

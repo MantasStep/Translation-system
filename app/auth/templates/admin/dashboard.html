@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1 class="mb-4">Administratoriaus Dashboard</h1>
+
+  <!-- Sukurti naują vartotoją -->
+  <div class="card mb-4">
+    <div class="card-header">Sukurti vartotoją</div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('admin.create_user') }}">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <input type="text" name="username" class="form-control" placeholder="Vartotojo vardas" required>
+          </div>
+          <div class="col-md-4">
+            <input type="password" name="password" class="form-control" placeholder="Slaptažodis" required>
+          </div>
+          <div class="col-md-2">
+            <select name="role" class="form-select">
+              <option value="user">Vartotojas</option>
+              <option value="admin">Administratorius</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button type="submit" class="btn btn-success w-100">Kurti</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Esamų vartotojų sąrašas -->
+  <div class="card">
+    <div class="card-header">Vartotojai</div>
+    <div class="card-body p-0">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>#</th><th>Vardas</th><th>Role</th><th>Veiksmai</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for u in users %}
+          <tr>
+            <td>{{ u.id }}</td>
+            <td>{{ u.username }}</td>
+            <td>{{ u.role }}</td>
+            <td>
+              <a href="{{ url_for('admin.edit_user', user_id=u.id) }}" class="btn btn-sm btn-primary">Redaguoti</a>
+              {% if u.id != current_user.id %}
+                <form method="post" action="{{ url_for('admin.delete_user', user_id=u.id) }}"
+                      style="display:inline;" onsubmit="return confirm('Ištrinti šį vartotoją?');">
+                  <button type="submit" class="btn btn-sm btn-danger">Trinti</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ... formos ir lentelė su vartotojais ... -->
+
+<hr>
+<a href="{{ url_for('admin.memory') }}" class="btn btn-info">
+  Peržiūrėti Translation Memory
+</a>
+{% endblock %}

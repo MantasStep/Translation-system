@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Prisijungimas{% endblock %}
+{% block content %}
+<h2>Prisijungimas</h2>
+<form method="post">
+  <label>Vartotojo vardas: <input name="username"></label><br>
+  <label>Slaptažodis:       <input name="password" type="password"></label><br>
+  <button type="submit">Prisijungti</button>
+</form>
+{% endblock %}
