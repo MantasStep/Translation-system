@@ -17,16 +17,12 @@ HF_MODELS = {
         "model_name": "facebook/m2m100_1.2B",
         "directions": [("en", "lt"), ("lt", "en")]
     },
-    "mbart_one_to_many": {
+    "mbart50_en2m": {
         "model_name": "facebook/mbart-large-50-one-to-many-mmt",
-        "directions": [("en", "lt")]
+        "directions": [("en_XX", "lt_LT")]
     },
-    "mbart_many_to_one": {
+    "mbart50_m2en": {
         "model_name": "facebook/mbart-large-50-many-to-one-mmt",
-        "directions": [("lt", "en")]
-    },
-    "mbart_many_to_many": {
-        "model_name": "facebook/mbart-large-50-many-to-many-mmt",
-        "directions": [("lt", "en"), ("en", "lt")]
+        "directions": [("lt_LT", "en_XX")]
     }
 }

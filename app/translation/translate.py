@@ -1,4 +1,5 @@
 # app/translation/translate.py
+
 import os
 import uuid
 from flask import Blueprint, render_template, request, jsonify, current_app, send_file
@@ -12,11 +13,9 @@ translation_bp = Blueprint("translation", __name__,
                            template_folder="templates",
                            url_prefix="/translate")
 
-# Tiesiogiai hardcodiname kelius iš config.py
 UPLOAD_FOLDER = r"E:\univerui\4_kursas\bakalauras\Test\Translation-system\instance\uploads"
 TRANSLATED_FOLDER = r"E:\univerui\4_kursas\bakalauras\Test\Translation-system\instance\translations"
 
-# Inicializuojame service klasę:
 svc = TranslationService()
 document_service = DocumentService() 
 
@@ -43,7 +42,6 @@ def translate_api():
         src, tgt = data["direction"].split("-")
         best, candidates = svc.translate_text(data["text"], src, tgt)
 
-        # ✅ ČIA PRIDEDAME IŠSAUGOJIMĄ Į DB
         svc.save_translation(
             original=data["text"],
             best=best,
@@ -64,10 +62,7 @@ def translate_api():
         return jsonify(result), 200
     except Exception as e:
         print(f"❌ Klaida vertime: {str(e)}")
-        # Čia grąžinsime JSON, net jeigu klaida
         return jsonify({"error": str(e)}), 500
-
-
 
 @translation_bp.route("/upload", methods=["POST"])
 @login_required
@@ -93,20 +88,17 @@ def upload_and_translate():
     input_path = os.path.join(upl_dir, f"{uid}{ext}")
     uploaded.save(input_path)
 
-    # prepare output path
     out_dir = current_app.config["TRANSLATED_FOLDER"]
     os.makedirs(out_dir, exist_ok=True)
     out_name = f"test_translated_{uid}{ext}"
     output_path = os.path.join(out_dir, out_name)
 
-    # if plain text → translate whole file at once
     if ext.lower() == ".txt":
         text = open(input_path, encoding="utf-8").read()
         best, _ = svc.translate_text(text, src, tgt)
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(best)
 
-    # if .docx → iterate paragraphs, preserve images automatically
     elif ext.lower() == ".docx":
         doc = Document(input_path)
         for p in doc.paragraphs:
@@ -141,10 +133,8 @@ def upload_and_translate():
 def download_translated_file(filename):
     print(f"🔍 Bandome parsiųsti failą: {filename}")
 
-    # Pašaliname papildomą "test_translated_" priešdėlį, nes jis jau yra
     file_path = os.path.join(TRANSLATED_FOLDER, filename)
 
-    # Log informacija
     print(f"🔍 Generuotas kelias: {file_path}")
     print(f"🔍 Ar failas egzistuoja? {os.path.exists(file_path)}")
 

@@ -30,8 +30,8 @@ def create_app():
     from app.translation.translate  import translation_bp
 
     # register blueprints *only once each*
-    app.register_blueprint(auth_bp)                         # /login, /logout
-    app.register_blueprint(admin_bp, url_prefix="/admin")   # /admin/dashboard, /admin/memory ...
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(translation_bp, url_prefix="/translate")
 
     print("Galimi maršrutai:")

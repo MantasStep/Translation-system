@@ -12,10 +12,8 @@ from transformers import MBartForConditionalGeneration, MBart50TokenizerFast
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
 
-# Hardcoded path locations
 UPLOAD_FOLDER = r"E:\univerui\4_kursas\bakalauras\Test\Translation-system\instance\uploads"
 TRANSLATED_FOLDER = r"E:\univerui\4_kursas\bakalauras\Test\Translation-system\instance\translations"
-
 
 class TranslationService:
     def __init__(self):
@@ -74,7 +72,6 @@ class TranslationService:
         if not current_user or not hasattr(current_user, 'id'):
             raise RuntimeError("Nepavyko nustatyti prisijungusio vartotojo.")
 
-        # Pilni keliai išsaugojimui
         print(f"🛠️ Saugojamas failas: {file_path}, Išverstas failas: {translated_path}")
         
         file_path = os.path.join(UPLOAD_FOLDER, file_path) if file_path else None
@@ -104,9 +101,13 @@ class TranslationService:
 
     def filter_models_by_direction(self, src: str, tgt: str):
         print(f"🛠️ Filtruojama kryptis: {src} → {tgt}")
-        active_hf_models = {
-            k: v for k, v in self.hf_models.items()
-            if (src, tgt) in HF_MODELS[k]["directions"]
-        }
+        active_hf_models = {}
+        for k, v in self.hf_models.items():
+            static_dirs = HF_MODELS[k]["directions"]
+            if any(
+                static_src.split("_")[0] == src and static_tgt.split("_")[0] == tgt
+                for static_src, static_tgt in static_dirs
+            ):
+                active_hf_models[k] = v
         print(f"🎯 Atrinkti HF modeliai: {list(active_hf_models.keys())}")
         return active_hf_models
