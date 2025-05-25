@@ -1,6 +1,7 @@
 # norint pasileist koda:
 # venv\Scripts\activate
 # python -m flask run
+# python -m flask --debug run
 
 # i gita koda pushint:
 # git add .

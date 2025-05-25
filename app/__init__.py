@@ -17,9 +17,10 @@ def create_app():
     login.init_app(app)
     login.login_view = "auth.login"
 
-    # upload/translations folders
-    app.config['UPLOAD_FOLDER']     = os.path.join(app.instance_path, 'uploads')
-    app.config['TRANSLATED_FOLDER'] = os.path.join(app.instance_path, 'translations')
+    # 🔄 Kietai užkoduoti keliai
+    app.config['UPLOAD_FOLDER'] = "E:\\univerui\\4_kursas\\bakalauras\\Test\\Translation-system\\instance\\uploads"
+    app.config['TRANSLATED_FOLDER'] = "E:\\univerui\\4_kursas\\bakalauras\\Test\\Translation-system\\instance\\translations"
+    
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     os.makedirs(app.config['TRANSLATED_FOLDER'], exist_ok=True)
 
@@ -33,4 +34,9 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix="/admin")   # /admin/dashboard, /admin/memory ...
     app.register_blueprint(translation_bp, url_prefix="/translate")
 
+    print("Galimi maršrutai:")
+    for rule in app.url_map.iter_rules():
+        print(rule)
+
     return app
+

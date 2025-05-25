@@ -5,25 +5,68 @@ from flask import Blueprint, render_template, request, jsonify, current_app, sen
 from docx import Document
 from app.translation.services.translation_service import TranslationService
 from flask_login import login_required
+from app.upload.services.document_service import DocumentService
+from app.translation.constants import HF_MODELS
 
 translation_bp = Blueprint("translation", __name__,
                            template_folder="templates",
                            url_prefix="/translate")
 
+# Tiesiogiai hardcodiname kelius iš config.py
+UPLOAD_FOLDER = r"E:\univerui\4_kursas\bakalauras\Test\Translation-system\instance\uploads"
+TRANSLATED_FOLDER = r"E:\univerui\4_kursas\bakalauras\Test\Translation-system\instance\translations"
+
+# Inicializuojame service klasę:
 svc = TranslationService()
+document_service = DocumentService() 
+
+def allowed_file(filename):
+    """
+    Patikrina ar failas turi leistiną plėtinį.
+    """
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config["ALLOWED_EXTENSIONS"]
+
 
 @translation_bp.route("/", methods=["GET"])
 @login_required
 def translate_page():
+    direction = request.args.get("direction", "")
+    print(f"🔍 Kryptis pasirinkta: {direction}")
     return render_template("translate.html")
 
 
-@translation_bp.route("/", methods=["POST"])
-@login_required
+@translation_bp.route("/translate", methods=["POST"])
 def translate_api():
-    data = request.json
-    result = svc.translate_api(data)
-    return jsonify(result)
+    try:
+        data = request.json
+        print(f"📥 Gauta užklausa su duomenimis: {data}")
+        src, tgt = data["direction"].split("-")
+        best, candidates = svc.translate_text(data["text"], src, tgt)
+
+        # ✅ ČIA PRIDEDAME IŠSAUGOJIMĄ Į DB
+        svc.save_translation(
+            original=data["text"],
+            best=best,
+            all_outs=candidates,
+            src=src,
+            tgt=tgt,
+            is_doc=False
+        )
+
+        result = {
+            "translated_text": best,
+            "candidates": [
+                {"model": model, "translation": translation} 
+                for model, translation in candidates.items()
+            ]
+        }
+        print(f"✅ Vertimo rezultatas: {result}")
+        return jsonify(result), 200
+    except Exception as e:
+        print(f"❌ Klaida vertime: {str(e)}")
+        # Čia grąžinsime JSON, net jeigu klaida
+        return jsonify({"error": str(e)}), 500
+
 
 
 @translation_bp.route("/upload", methods=["POST"])
@@ -53,7 +96,7 @@ def upload_and_translate():
     # prepare output path
     out_dir = current_app.config["TRANSLATED_FOLDER"]
     os.makedirs(out_dir, exist_ok=True)
-    out_name = f"{base}_translated{ext}"
+    out_name = f"test_translated_{uid}{ext}"
     output_path = os.path.join(out_dir, out_name)
 
     # if plain text → translate whole file at once
@@ -74,16 +117,40 @@ def upload_and_translate():
 
     else:
         return ("Nepalaikomas failo tipas", 400)
-
-    # finally, return as download
-    return send_file(
-        output_path,
-        as_attachment=True,
-        download_name=out_name,
-        mimetype=(
-            "application/vnd.openxmlformats-officedocument."
-            "wordprocessingml.document"
-            if ext.lower()==".docx" else "text/plain"
-        )
+    
+    # ✅ Pridėtas saugojimas į DB:
+    svc.save_translation(
+        original=None,
+        best=None,
+        all_outs={},
+        src=src,
+        tgt=tgt,
+        is_doc=True,
+        file_path=input_path,
+        translated_path=output_path
     )
-pass
+
+    # ✅ **Grąžinamas atsisiuntimo URL**
+    download_url = f"/download/{out_name}"
+    print(f"🔍 Generuotas kelias: /download/{out_name}")
+    print(f"🔍 Ar failas egzistuoja? {os.path.exists(output_path)}")
+
+    return jsonify({"download_url": download_url, "status": "ok"})
+    
+@translation_bp.route("/download/<filename>", methods=["GET"])
+def download_translated_file(filename):
+    print(f"🔍 Bandome parsiųsti failą: {filename}")
+
+    # Pašaliname papildomą "test_translated_" priešdėlį, nes jis jau yra
+    file_path = os.path.join(TRANSLATED_FOLDER, filename)
+
+    # Log informacija
+    print(f"🔍 Generuotas kelias: {file_path}")
+    print(f"🔍 Ar failas egzistuoja? {os.path.exists(file_path)}")
+
+    if not os.path.exists(file_path):
+        print(f"❌ Failas nerastas: {file_path}")
+        return "Failas nerastas", 404
+
+    print(f"✅ Failas rastas: {file_path}")
+    return send_file(file_path, as_attachment=True)

@@ -33,25 +33,25 @@
 
 <div class="split-view mt-4">
   <!-- Teksto vertimo panelė -->
-  <div class="panel">
-    <h4>Teksto vertimas</h4>
-    <form id="text-form">
-      <div class="mb-3">
-        <label for="text-input" class="form-label">Įveskite tekstą:</label>
-        <textarea id="text-input" name="text" class="form-control" rows="5"></textarea>
-      </div>
-      <div class="mb-3">
-        <label for="text-direction" class="form-label">Kryptis:</label>
-        <select id="text-direction" name="direction" class="form-select">
-          <option value="lt-en">Lietuvių → Anglų</option>
-          <option value="en-lt">Anglų → Lietuvių</option>
-        </select>
-      </div>
-      <button type="submit" class="btn btn-primary">Versti tekstą</button>
-    </form>
-    <div id="text-result" class="result-box"></div>
-  </div>
-
+<div class="panel">
+  <h4>Teksto vertimas</h4>
+  <form id="text-form">
+    <div class="mb-3">
+      <textarea id="input-text" maxlength="5000" placeholder="Įveskite tekstą..." oninput="updateCounter()"></textarea>
+        <p>Likę simboliai: <span id="char-counter">5000</span></p>
+    </div>
+    <div class="mb-3">
+      <label for="text-direction" class="form-label">Kryptis:</label>
+      <select id="text-direction" name="direction" class="form-select">
+        <option value="lt-en">Lietuvių → Anglų</option>
+        <option value="en-lt">Anglų → Lietuvių</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Versti tekstą</button>
+    <button type="button" id="clear-text" class="btn btn-danger">Ištrinti</button>
+  </form>
+  <div id="text-result" class="result-box"></div>
+</div>
   <!-- Dokumento vertimo panelė -->
   <div class="panel">
     <h4>Dokumento vertimas</h4>
@@ -72,31 +72,60 @@
     <div id="file-result" class="result-box"></div>
   </div>
 </div>
-
+<div id="model-translations" class="result-box mt-2">
+  <h5>Modelių vertimai:</h5>
+  <ul id="models-list"></ul>
+</div>
 <script>
   // Teksto vertimas
   document.getElementById('text-form').onsubmit = async e => {
     e.preventDefault();
     const data = {
-      text: document.getElementById('text-input').value,
-      src: document.getElementById('text-direction').value.split('-')[0],
-      tgt: document.getElementById('text-direction').value.split('-')[1],
+        text: document.getElementById('input-text').value,
+        direction: document.getElementById('text-direction').value
     };
-    const res = await fetch('/translate/', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(data)
-    });
-    const json = await res.json();
-    // we renamed the API's "all" field to "candidates" for clarity
-    const candidates = json.candidates || json.all;
-    document.getElementById('text-result').innerHTML =
-      `<strong>Geriausias:</strong> ${json.best}
-       <hr/><strong>Visi modeliai:</strong><ul>` +
-      Object.entries(candidates)
-            .map(([m,t])=>`<li>${m}: ${t}</li>`).join('') +
-      `</ul>`;
-  };
+    console.log("Siunčiama užklausa:", data);
+
+    try {
+        const res = await fetch('/translate/translate', {  
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+          // Tikriname, ar yra JSON atsakymas, ar HTML
+          const contentType = res.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+              const errorData = await res.json();
+              document.getElementById('text-result').innerHTML = `Klaida: ${errorData.error}`;
+          } else {
+              document.getElementById('text-result').innerHTML = "Klaida vertime. Patikrinkite įvestus duomenis.";
+          }
+          console.log(await res.text()); // <-- pridedame išvedimą į konsolę
+          return;
+        }
+
+        const result = await res.json();
+        document.getElementById('text-result').innerHTML = `<strong>Geriausias vertimas:</strong> ${result.translated_text}`;
+
+        const modelsList = document.getElementById('models-list');
+        modelsList.innerHTML = "";
+
+        result.candidates.forEach(candidate => {
+            const listItem = document.createElement('li');
+            listItem.innerHTML = `<strong>${candidate.model}:</strong> ${candidate.translation}`;
+            modelsList.appendChild(listItem);
+        });
+
+    } catch (error) {
+        console.error("Klaida siunčiant užklausą:", error);
+        document.getElementById('text-result').innerHTML = "Serverio klaida, pabandykite vėliau.";
+    }
+};
+
 
   // Dokumento vertimas
   document.getElementById('file-form').onsubmit = async e => {
@@ -106,22 +135,30 @@
     form.append('direction', document.getElementById('file-direction').value);
 
     const res = await fetch('/translate/upload', { method: 'POST', body: form });
-    if (!res.ok) {
-      document.getElementById('file-result').textContent = 'Klaida vertime.';
-      return;
-    }
-    const disp = res.headers.get('Content-Disposition')||'';
-    if (disp.includes('attachment')) {
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const name = disp.split('filename=')[1]||'translated.docx';
-      document.getElementById('file-result').innerHTML =
-        `<a href="${url}" download="${name}" class="btn btn-success">
-           Atsisiųsti: ${name}
-         </a>`;
+    const data = await res.json();
+
+    if (data.status === 'ok') {
+        document.getElementById('file-result').innerHTML =
+      `<a href="/translate/${data.download_url}" class="btn btn-success">
+          Atsisiųsti išverstą dokumentą
+      </a>`;
     } else {
-      document.getElementById('file-result').textContent = await res.text();
+        document.getElementById('file-result').textContent = 'Vertimas nepavyko.';
     }
+};
+
+
+
+  // Išvalyti tekstą iš įvedimo laukelio
+  document.getElementById('clear-text').onclick = () => {
+    document.getElementById('input-text').value = "";
+    document.getElementById('text-result').innerHTML = ""; // Išvalom ir rezultatą
   };
+
+  function updateCounter() {
+    const maxLength = 5000;
+    const currentLength = document.getElementById('input-text').value.length;
+    document.getElementById('char-counter').innerText = maxLength - currentLength;
+  }
 </script>
 {% endblock %}

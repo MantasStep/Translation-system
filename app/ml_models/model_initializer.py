@@ -45,7 +45,6 @@ def ensure_model(repo_id: str) -> Optional[str]:
 
 
 def load_models():
-    easy_models = {}
     hf_models   = {}
 
     for key, repo in MODEL_REPOS.items():
@@ -53,16 +52,6 @@ def load_models():
         path = ensure_model(repo)
         if not path:
             continue
-
-        # try EasyNMT for m2m models
-        if key in ("m2m100_418M", "m2m100_1.2B"):
-            try:
-                em = EasyNMT(path)
-                easy_models[key] = {"model": em, "langs": ALLOWED_PAIRS}
-                print(f">>> EasyNMT '{key}' loaded for LT<->EN")
-                continue
-            except Exception as e:
-                print(f">>> EasyNMT init failed for {key}: {e}")
 
         # fallback to HF for other repos
         try:
@@ -90,4 +79,4 @@ def load_models():
         except Exception as e:
             print(f"!!! HF init failed for {key}: {e}")
 
-    return easy_models, hf_models
+    return hf_models

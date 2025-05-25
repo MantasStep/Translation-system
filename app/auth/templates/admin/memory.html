@@ -19,10 +19,12 @@
       <td>{{ "Taip" if r.is_document else "Ne" }}</td>
       <td>
         {% if r.is_document %}
-          <a href="{{ url_for('admin.download_memory_file', tm_id=r.id, which='original') }}">Originalas</a> |
-          <a href="{{ url_for('admin.download_memory_file', tm_id=r.id, which='translated') }}">Vertimas</a>
+        <a href="{{ url_for('admin.download_memory_file', tm_id=r.id, which='original') }}">Originalas</a> |
+        <a href="{{ url_for('admin.download_memory_file', tm_id=r.id, which='translated') }}">Vertimas</a>
+        {% else %}
+        Nėra dokumento
         {% endif %}
-      </td>
+    </td>  
     </tr>
   {% endfor %}
   </tbody>

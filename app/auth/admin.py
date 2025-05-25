@@ -2,12 +2,13 @@
 
 from flask import (
     Blueprint, render_template, request, redirect,
-    url_for, flash, send_from_directory
+    url_for, flash, send_file
 )
 from flask_login import login_required, current_user
 from app import db
 from app.database.models import User, TranslationMemory
 import os
+from os.path import basename
 
 admin_bp = Blueprint(
     "admin",
@@ -83,32 +84,37 @@ def memory():
     ).all()
     return render_template("memory.html", records=records)
 
-@admin_bp.route("/memory/download/<int:tm_id>/<which>")
+@admin_bp.route('/download/<tm_id>/<which>', methods=['GET'])
 def download_memory_file(tm_id, which):
-    """
-    which: 'original' arba 'translated'
-    """
-    tm = TranslationMemory.query.get_or_404(tm_id)
+    record = TranslationMemory.query.get(tm_id)
+    
+    if not record:
+        return "Dokumentas nerastas", 404
 
-    # Įsitikiname, kad tai dokumentas
-    if not tm.is_document or not tm.file_path:
-        flash("Failas nerastas arba tai ne dokumentas", "warning")
-        return redirect(url_for("admin.memory"))
+    if which == 'original':
+        filename = record.file_path
+        # Paimame tik failo pavadinimą, jeigu kartais būtų pilnas kelias
+        filename = basename(filename)
+        file_path = os.path.join(r"E:\univerui\4_kursas\bakalauras\Test\Translation-system\instance\uploads", filename)
+    elif which == 'translated':
+        filename = record.translated_path
+        
+        if not filename.startswith("test_translated_"):
+            filename = f"test_translated_{filename}"
 
-    # Nustatome kurią versiją siųsti
-    if which == "original":
-        path = getattr(tm, "source_path", None) or tm.file_path
+        # Paimame tik failo pavadinimą, jeigu kartais būtų pilnas kelias
+        filename = basename(filename)
+        
+        file_path = os.path.join(r"E:\univerui\4_kursas\bakalauras\Test\Translation-system\instance\translations", filename)
     else:
-        path = tm.file_path
+        return "Neteisingas kelias", 400
+    
+    print(f"🔍 Bandoma siųsti failą: {file_path}")
+    if not os.path.exists(file_path):
+        print(f"❌ Failas nerastas: {file_path}")
+        print("Esami failai direktorijoje:")
+        print(os.listdir(r"E:\univerui\4_kursas\bakalauras\Test\Translation-system\instance\translations"))
+        return "Failas nerastas", 404
 
-    if not os.path.exists(path):
-        flash("Failas nerastas diske", "warning")
-        return redirect(url_for("admin.memory"))
+    return send_file(file_path, as_attachment=True)
 
-    folder, fname = os.path.split(path)
-    return send_from_directory(
-        directory=folder,
-        path=fname,
-        as_attachment=True,
-        download_name=fname
-    )

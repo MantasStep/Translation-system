@@ -1,69 +1,53 @@
 # app/translation/services/translation_service.py
 
 import time
+import os
 from flask import current_app
 from flask_login import current_user
 from app.ml_models.model_initializer import load_models
 from app.database.models import TranslationMemory
 from app import db
+from app.translation.constants import HF_MODELS
+from transformers import MBartForConditionalGeneration, MBart50TokenizerFast
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import torch
+
+# Hardcoded path locations
+UPLOAD_FOLDER = r"E:\univerui\4_kursas\bakalauras\Test\Translation-system\instance\uploads"
+TRANSLATED_FOLDER = r"E:\univerui\4_kursas\bakalauras\Test\Translation-system\instance\translations"
+
 
 class TranslationService:
     def __init__(self):
-        # Modeliai užkraunami tik vieną kartą, kai sukuriama šio serviso instancija
-        self.easy_models, self.hf_models = load_models()
+        self.hf_models = load_models()
 
     def translate_text(self, text: str, source_lang: str, target_lang: str):
-        """
-        Išverčia tekstą per visus modelius, kurie palaiko source_lang→target_lang.
-        Grąžina tuple(best_translation, all_candidates).
-        """
-        # Atrenkame tik tuos EasyNMT ir HF modelius, kurie palaiko šią kryptį
-        easy_active = {
-            k: info for k, info in self.easy_models.items()
-            if (source_lang, target_lang) in info["langs"]
-        }
-        hf_active = {
-            k: info for k, info in self.hf_models.items()
-            if (source_lang, target_lang) in info["langs"]
-        }
+        active_hf_models = self.filter_models_by_direction(source_lang, target_lang)
+
+        if not active_hf_models:
+            raise ValueError(f"Nėra modelių palaikančių {source_lang}→{target_lang}")
 
         candidates = {}
 
-        # 1) EasyNMT modeliai
-        for key, info in easy_active.items():
-            em = info["model"]
-            current_app.logger.debug(f"[EasyNMT:{key}] translating…")
-            start = time.time()
-            out = em.translate(
-                text,
-                source_lang=source_lang,
-                target_lang=target_lang
-            )
-            current_app.logger.debug(f"[EasyNMT:{key}] done in {time.time()-start:.2f}s")
-            candidates[key] = out
-
-        # 2) Hugging Face modeliai
-        #    (Marian ir M2M100 pagal raktus)
-        from transformers import (
-            MarianTokenizer, MarianMTModel,
-            M2M100Tokenizer, M2M100ForConditionalGeneration
-        )
-
-        for key, info in hf_active.items():
+        for key, info in active_hf_models.items():
             tok   = info["tokenizer"]
             model = info["model"]
             current_app.logger.debug(f"[HF:{key}] translating…")
             start = time.time()
 
             if key.startswith("m2m100"):
-                # M2M100: nustatome src_lang ir bos_token
                 tok.src_lang = source_lang
                 encoded     = tok(text, return_tensors="pt")
                 bos_id      = tok.get_lang_id(target_lang)
                 outs        = model.generate(**encoded, forced_bos_token_id=bos_id)
-
+            elif key.startswith("mbart"):
+                src_lang_code = f"{source_lang}_XX"
+                tgt_lang_code = f"{target_lang}_XX"
+                tok.src_lang = src_lang_code
+                encoded     = tok(text, return_tensors="pt")
+                bos_id      = tok.lang_code_to_id[tgt_lang_code]
+                outs        = model.generate(**encoded, forced_bos_token_id=bos_id)
             else:
-                # Marian: vienam poros repo
                 encoded = tok(text, return_tensors="pt", padding=True)
                 outs    = model.generate(**encoded)
 
@@ -71,10 +55,6 @@ class TranslationService:
             current_app.logger.debug(f"[HF:{key}] done in {time.time()-start:.2f}s")
             candidates[key] = translation
 
-        if not candidates:
-            raise ValueError(f"Nėra modelių palaikančių {source_lang}→{target_lang}")
-
-        # Pasirenkame „geriausią“ (čia – ilgiausią) vertimą
         best = max(candidates.values(), key=len)
         return best, candidates
 
@@ -85,35 +65,48 @@ class TranslationService:
         all_outs: dict,
         src: str,
         tgt: str,
-        is_doc: bool=False,
-        file_path: str=None
+        is_doc: bool = False,
+        file_path: str = None,
+        translated_path: str = None
     ):
-        """
-        Įrašo vertimą į TranslationMemory su prisijungusio vartotojo ID.
-        """
+        print(f"🛠️ Saugojamas vertimas į DB:\n  Originalus tekstas: {original}\n  Vertimas: {best}")
+
         if not current_user or not hasattr(current_user, 'id'):
             raise RuntimeError("Nepavyko nustatyti prisijungusio vartotojo.")
 
-        rec = TranslationMemory(
-            source_text     = original     if not is_doc else None,
-            translated_text = best,
-            source_lang     = src,
-            target_lang     = tgt,
-            is_document     = is_doc,
-            file_path       = file_path,
-            user_id         = current_user.id
-        )
-        db.session.add(rec)
-        db.session.commit()
+        # Pilni keliai išsaugojimui
+        print(f"🛠️ Saugojamas failas: {file_path}, Išverstas failas: {translated_path}")
+        
+        file_path = os.path.join(UPLOAD_FOLDER, file_path) if file_path else None
+        translated_path = os.path.join(TRANSLATED_FOLDER, translated_path) if translated_path else None
 
-    def translate_api(self, data: dict):
-        """
-        Flask view kviečia su JSON {text, src, tgt}.
-        Atlieka vertimą, įrašo jį į DB ir grąžina rezultatus.
-        """
-        txt = data['text']
-        src = data['src']
-        tgt = data['tgt']
-        best, all_outs = self.translate_text(txt, src, tgt)
-        self.save_translation(txt, best, all_outs, src, tgt, is_doc=False)
-        return {'best': best, 'candidates': all_outs}
+        print(f"⚡ Pilnas originalaus failo kelias: {file_path}")
+        print(f"⚡ Pilnas išversto failo kelias: {translated_path}")
+
+        try:
+            rec = TranslationMemory(
+                source_text=original if not is_doc else None,
+                translated_text=best if not is_doc else None,
+                source_lang=src,
+                target_lang=tgt,
+                is_document=is_doc,
+                file_path=file_path,
+                translated_path=translated_path,
+                user_id=current_user.id
+            )
+
+            db.session.add(rec)
+            db.session.commit()
+            print("✅ Įrašas sėkmingai išsaugotas!")
+        except Exception as e:
+            print(f"❌ Klaida išsaugant įrašą į DB: {e}")
+
+
+    def filter_models_by_direction(self, src: str, tgt: str):
+        print(f"🛠️ Filtruojama kryptis: {src} → {tgt}")
+        active_hf_models = {
+            k: v for k, v in self.hf_models.items()
+            if (src, tgt) in HF_MODELS[k]["directions"]
+        }
+        print(f"🎯 Atrinkti HF modeliai: {list(active_hf_models.keys())}")
+        return active_hf_models

@@ -47,6 +47,7 @@ class TranslationMemory(db.Model):
     confirmed       = db.Column(db.Boolean,    default=False)
     is_document     = db.Column(db.Boolean,    default=False)
     file_path       = db.Column(db.String(255),nullable=True)
+    translated_path = db.Column(db.String(255),nullable=True)   # <-- Naujas stulpelis
     created_at      = db.Column(db.DateTime,   default=datetime.utcnow)
 
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
