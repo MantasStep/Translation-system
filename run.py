@@ -6,7 +6,8 @@
 # i gita koda pushint:
 # git add .
 # git commit -m "pavadinimas"
-# git push
+# git push github main
+# git push origin main
 
 from app import create_app, db
 
