@@ -7,7 +7,6 @@
 # git add .
 # git commit -m "pavadinimas"
 # git push github main
-# git push origin main
 
 from app import create_app, db
 

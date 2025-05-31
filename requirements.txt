@@ -1,32 +1,28 @@
-# Web framework
 Flask==2.2.5
 Werkzeug==2.2.3
 
-# User management / sessions / forms
 Flask-Login
 Flask-WTF
 WTForms
 
-# Database ORM & migrations
 Flask-SQLAlchemy
 SQLAlchemy
 Flask-Migrate
-# HTTP requests
+
 requests
 
-# Dokumentų apdorojimas
 python-docx
 
-# easyNMT priklausomybės
-fasttext-wheel       # satisfies fasttext
+fasttext-wheel
 protobuf
 sentencepiece
 torch
 transformers
 huggingface-hub
 
-# Papildomi natūralios kalbos įrankiai
 langdetect
 nltk
 
 sacremoses
+
+bert-score
