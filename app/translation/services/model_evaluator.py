@@ -1,12 +1,8 @@
 # app/translation/services/model_evaluator.py
 
 from typing import Dict, Tuple, List
-
-# Jūsų esami importai BLEU ir BERT funkcijoms:
 from app.translation.services.evaluation.bleu import compute_sentence_bleu
 from app.translation.services.evaluation.bert import compute_bert_f1
-
-# Naujas importas ChrF:
 from app.translation.services.evaluation.chrf import compute_sentence_chrf
 
 
@@ -15,9 +11,6 @@ def filter_models_by_direction(
     src_lang: str,
     tgt_lang: str
 ) -> Dict[str, dict]:
-    """
-    Gražina subset'ą hf_models, kurie palaiko tiksliai src_lang→tgt_lang kryptį.
-    """
     from app.translation.constants import HF_MODELS
 
     active = {}
@@ -39,10 +32,6 @@ def compute_back_translations(
     source_lang: str,
     target_lang: str
 ) -> List[str]:
-    """
-    Atlieka vieną kartą atgalinį vertimą (back-translation) fwd_translation per visus reverse_models.
-    Grąžina sąrašą atgalinių tekstų.
-    """
     back_translations: List[str] = []
     print(f"🔄 [model_evaluator] Back-translation pradedama vieną kartą: '{fwd_translation[:30]}...'")
 
@@ -91,10 +80,6 @@ def round_trip_bleu_per_candidate(
     back_translations: List[str],
     source_text: str
 ) -> float:
-    """
-    Paimus jau apskaičiuotus atgalinius vertimus (back_translations), grąžina vidutinį BLEU.
-    Jei back_translations sąrašas tuščias, gražina 0.0.
-    """
     if not back_translations:
         print("⚠️ [model_evaluator][BLEU] Nėra atgalinių tekstų, grąžinu BLEU=0")
         return 0.0
@@ -115,10 +100,6 @@ def round_trip_bert_per_candidate(
     source_text: str,
     source_lang: str
 ) -> float:
-    """
-    Paimus jau apskaičiuotus back_translations, grąžina vidutinį BERTScore F1.
-    Jei back_translations sąrašas tuščias arba BERTScore dalis meta klaidą, gražina 0.0.
-    """
     if not back_translations:
         print("⚠️ [model_evaluator][BERT] Nėra atgalinių tekstų, grąžinu BERTScore=0")
         return 0.0
@@ -146,11 +127,6 @@ def select_best_by_round_trip(
     source_lang: str,
     target_lang: str
 ) -> Tuple[str, str]:
-    """
-    (BLEU-vien tik pasirinkimas)
-    Iš candidates pasirenka geriausią vertimą pagal round-trip BLEU,
-    bet atgalinį vertimą atlieka tik vieną kartą per kandidatą.
-    """
     print(f"🔍 [model_evaluator] Pradedama geriausio modelio paieška pagal BLEU...")
     reverse_models = filter_models_by_direction(hf_models, target_lang, source_lang)
 
@@ -183,11 +159,6 @@ def select_best_by_hybrid(
     target_lang: str,
     weight_bleu: float = 0.5
 ) -> Tuple[str, str]:
-    """
-    Iš candidates pasirenka geriausią vertimą,
-    kombinuodama round-trip BLEU, BERTScore F1 ir ChrF.
-    Atgalinį vertimą atlieka tik vieną kartą per kandidatą.
-    """
     print(f"🔍 [model_evaluator] Pradedama hibridinio geriausio modelio paieška (BLEU+BERT+ChrF)...")
     reverse_models = filter_models_by_direction(hf_models, target_lang, source_lang)
 
@@ -204,20 +175,16 @@ def select_best_by_hybrid(
     for mdl_name, fwd_translation in candidates.items():
         print(f"🔍 [model_evaluator] Skaičiuoju BLEU, BERT ir ChrF už kandidatą: {mdl_name}")
 
-        # 1) Atlieku vieną back-translation visiems reverse modeliams:
         back_texts = compute_back_translations(
             fwd_translation, reverse_models, source_lang, target_lang
         )
 
-        # 2) Vidutinis BLEU:
         avg_bleu = round_trip_bleu_per_candidate(back_texts, source_text)
         bleu_scores[mdl_name] = avg_bleu
 
-        # 3) Vidutinis BERTScore F1:
         avg_f1 = round_trip_bert_per_candidate(back_texts, source_text, source_lang)
         bert_scores[mdl_name] = avg_f1
 
-        # 4) Vidutinis ChrF:
         total_chrf = 0.0
         for bt in back_texts:
             chrf_val = compute_sentence_chrf(bt, source_text)
@@ -227,7 +194,6 @@ def select_best_by_hybrid(
         print(f"📊 [model_evaluator] Vidutinis ChrF už kandidatą: {avg_chrf:.2f}")
         chrf_scores[mdl_name] = avg_chrf
 
-        # 5) Hibridinis balas (pvz., BLEU 50%, BERT 30%, ChrF 20%):
         weight_bert = 0.3
         weight_chrf = 0.2
         hybrid_score = (

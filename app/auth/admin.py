@@ -17,14 +17,12 @@ admin_bp = Blueprint(
     template_folder="templates/admin"
 )
 
-# --- Tik prisijungę adminai ---
 @admin_bp.before_request
 @login_required
 def restrict_to_admin():
     if current_user.role.lower() != "admin":
         return "Neturi prieigos", 403
 
-# --- Vartotojų skydelis ---
 @admin_bp.route("/dashboard")
 def dashboard():
     users = User.query.order_by(User.id).all()
@@ -38,7 +36,6 @@ def create_user():
 
     u = User(username=username, role=role)
     u.set_password(pwd)
-    # Užpildome abu DB laukus, jei jie egzistuoja:
     u.pwd_hash      = u.password_hash
     u.password_hash = u.password_hash
 
@@ -74,11 +71,8 @@ def delete_user(user_id):
         flash(f"Vartotojas “{user.username}” ištrintas", "success")
     return redirect(url_for("admin.dashboard"))
 
-
-# --- Translation Memory peržiūra ---
 @admin_bp.route("/memory")
 def memory():
-    # Rikiuojame pagal ID (naujausi pirmi)
     records = TranslationMemory.query.order_by(
         TranslationMemory.id.desc()
     ).all()
@@ -93,7 +87,6 @@ def download_memory_file(tm_id, which):
 
     if which == 'original':
         filename = record.file_path
-        # Paimame tik failo pavadinimą, jeigu kartais būtų pilnas kelias
         filename = basename(filename)
         file_path = os.path.join(r"E:\univerui\4_kursas\bakalauras\Test\Translation-system\instance\uploads", filename)
     elif which == 'translated':
@@ -101,8 +94,7 @@ def download_memory_file(tm_id, which):
         
         if not filename.startswith("test_translated_"):
             filename = f"test_translated_{filename}"
-
-        # Paimame tik failo pavadinimą, jeigu kartais būtų pilnas kelias
+            
         filename = basename(filename)
         
         file_path = os.path.join(r"E:\univerui\4_kursas\bakalauras\Test\Translation-system\instance\translations", filename)

@@ -20,9 +20,6 @@ svc = TranslationService()
 document_service = DocumentService() 
 
 def allowed_file(filename):
-    """
-    Patikrina ar failas turi leistiną plėtinį.
-    """
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config["ALLOWED_EXTENSIONS"]
 
 
@@ -77,12 +74,10 @@ def upload_and_translate():
     except ValueError:
         return ("Neteisinga kryptis", 400)
 
-    # build safe filenames
     orig_name = uploaded.filename
     uid       = uuid.uuid4().hex
     base, ext = os.path.splitext(orig_name)
 
-    # save original
     upl_dir = current_app.config["UPLOAD_FOLDER"]
     os.makedirs(upl_dir, exist_ok=True)
     input_path = os.path.join(upl_dir, f"{uid}{ext}")
@@ -110,7 +105,6 @@ def upload_and_translate():
     else:
         return ("Nepalaikomas failo tipas", 400)
     
-    # ✅ Pridėtas saugojimas į DB:
     svc.save_translation(
         original=None,
         best=None,
@@ -122,7 +116,6 @@ def upload_and_translate():
         translated_path=output_path
     )
 
-    # ✅ **Grąžinamas atsisiuntimo URL**
     download_url = f"/download/{out_name}"
     print(f"🔍 Generuotas kelias: /download/{out_name}")
     print(f"🔍 Ar failas egzistuoja? {os.path.exists(output_path)}")

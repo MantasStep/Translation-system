@@ -35,16 +35,6 @@ def ensure_bert_model(
     lang: str = "lt",
     model_type: str = "xlm-roberta-base"
 ):
-    """
-    1) Pirmiausia bandome BERTScorer(lang, model_type) tiesiogiai.
-       Jei svoriai jau yra lokaliai HF cache, konstrukcija praeis be klaidos (ir be interneto).
-       (Dabar 'model_type' = "xlm-roberta-base" – patikimai palaikomas raktas BERTScorer).
-    2) Jei konstrukcija meta klaidą (pvz., svoriai dar neparsisiųsti), todėl:
-       - snapshot_download(repo_id=model_type, cache_dir=...) – vienkartinis parsisiuntimas lokaliai.
-    3) Po parsisiuntimo dar kartą bandome BERTScorer(lang, model_type).
-       Dabar svoriai turėtų būti lokaliai, todėl veiks be interneto. Jeigu ir vėl meta klaidą –
-       reiškia talpykla sugadinta, ir mes metame RuntimeError su instrukcija ištrinti cache dir.
-    """
 
     print(f"🔄 Bandome įkrauti BERTScorer (model_type='{model_type}') lokaliai (be interneto)...")
     try:
@@ -114,7 +104,6 @@ def ensure_bert_model(
 
 class TranslationService:
     def __init__(self):
-        # 1. Užtikriname, kad BERTScorer modelis būtų pasiekiamas lokaliai
         try:
             ensure_bert_model(
                 lang="lt",
@@ -139,11 +128,6 @@ class TranslationService:
         self.doc_service = DocumentService()
 
     def translate_text(self, text: str, source_lang: str, target_lang: str):
-        """
-        Atlieka vertimą per visus HF modelius (forward),
-        po to pasirenka geriausią vertimą pagal hibridinį BLEU + BERTScore.
-        Grąžina (best_translation, all_candidates_dict).
-        """
 
         print(f"🔄 Pradedamas vertimas: '{text}' ({source_lang} → {target_lang})")
 
@@ -233,10 +217,7 @@ class TranslationService:
         file_path: str = None,
         translated_path: str = None
     ):
-        """
-        Išsaugoti vertimo įrašą į duomenų bazę.
-        Atspausdina pranešimą, ar pavyko išsaugoti.
-        """
+        
         print("💾 Pradedamas įrašas į DB...")
         print(
             f"🛠️ Saugojamas vertimas:\n"
@@ -278,10 +259,7 @@ class TranslationService:
             current_app.logger.error(f"❌ Klaida saugant įrašą į DB: {e}")
 
     def filter_models_by_direction(self, src: str, tgt: str) -> dict:
-        """
-        Filtruoja self.hf_models pagal src→tgt porą, naudodamas HF_MODELS metaduomenis.
-        Gražina {model_key: model_info, ...}.
-        """
+
         current_app.logger.debug(f"🛠️ Filtruojama kryptis: {src} → {tgt}")
         active_hf_models = {}
         for model_key, model_info in self.hf_models.items():
